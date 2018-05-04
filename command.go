@@ -138,7 +138,7 @@ func sendFile(s *Session, pathname string) {
 		process: func(s *Session, file string) {
 			//todo don't read all file to mem
 			//todo get file size
-			readFile, err := ioutil.ReadFile(s.currentDir + pathname)
+			readFile, err := ioutil.ReadFile(s.currentDir + "/" + pathname)
 			if err != nil {
 				//todo improve err handle
 				s.response(552, "Requested file action aborted.", false)
@@ -147,6 +147,7 @@ func sendFile(s *Session, pathname string) {
 			}
 			//todo dataConn != nil ?
 			s.dataConn.Write(readFile)
+			s.response(226, "Transfer complete.", false)
 			log.Println("send file " + file)
 		},
 		value: pathname,
@@ -166,7 +167,8 @@ func storeFile(s *Session, pathname string) {
 				s.response(552, "Requested file action aborted.", false)
 				return
 			}
-			ioutil.WriteFile(s.currentDir+file, readFile, 0)
+			ioutil.WriteFile(s.currentDir+"/"+file, readFile, 0)
+			s.response(226, "Transfer complete.", false)
 		},
 		value: pathname,
 	}
@@ -182,10 +184,11 @@ func noop(s *Session, _ string) {
 
 func deleteFile(s *Session, pathname string) {
 	//todo os.PathSeparator
-	err := os.Remove(s.currentDir + pathname)
+	err := os.Remove(s.currentDir + "/" + pathname)
 	if err != nil {
 		//todo improve message (for any cases)
 		s.response(521, "Removing file was failed.", false)
+		log.Println("ERROR: cannot removed file", pathname, err.Error())
 		return
 	}
 	s.response(250, "DELE command successful.", false)
@@ -195,7 +198,7 @@ func deleteFile(s *Session, pathname string) {
 func removeDir(s *Session, pathname string) {
 	//todo check auth
 	//todo correct perform current dir
-	err := os.RemoveAll(s.currentDir + pathname)
+	err := os.RemoveAll(s.currentDir + "/" + pathname)
 	if err != nil {
 		//todo improve message (for any cases)
 		s.response(521, "Removing file was failed.", false)
