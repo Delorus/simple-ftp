@@ -281,7 +281,10 @@ func getFiles(s *Session, pathname string) {
 
 func abortTransfer(s *Session, _ string) {
 	s.stopTransfer = true
-	s.response(426, "transfer interrupted", false)
+	if s.dataConn != nil {
+		s.dataConn.Close()
+	}
+	s.response(226, "ABOR command successful", false)
 	log.Println("cancel transfer")
 }
 

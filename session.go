@@ -18,6 +18,7 @@ type Session struct {
 	//todo do not save in mem
 	login    string
 	passHash string
+	//todo add user permission
 	//todo session time out
 
 	connType     string //todo type
@@ -39,7 +40,7 @@ type Session struct {
 
 type data struct {
 	process command
-	value   string
+	value   string //todo to []byte
 }
 
 func transfer(s *Session, data <-chan data) {
@@ -96,11 +97,20 @@ func (s *Session) resolveDir(rawDir string) string {
 }
 
 func (s *Session) clippedDir() string {
-	//todo lost root '/'
 	clipDir := strings.TrimPrefix(s.currentDir, s.rootDir)
 	if clipDir == "" {
 		return "/"
 	} else {
 		return clipDir
 	}
+}
+
+func parsePort(port uint) (uint, uint) {
+	first := port / 256
+	second := port - (first * 256)
+	return first, second
+}
+
+func formatPort(first, second uint) uint {
+	return (first * 256) + second
 }
