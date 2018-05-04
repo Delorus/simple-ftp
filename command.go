@@ -77,7 +77,12 @@ func quit(s *Session, _ string) {
 func createActiveConn(s *Session, addr string) {
 	s.stopTransfer = false
 	go func(s *Session, addr string) {
-		conn, err := net.Dial("tcp", addr)
+		tcpAddr, err := toTcpIpAddr(addr)
+		if err != nil {
+			log.Println("ERROR:", err.Error())
+			return
+		}
+		conn, err := net.Dial("tcp", tcpAddr)
 		if err != nil {
 			log.Println("cannot connected to remote client")
 			//todo client response
@@ -94,14 +99,20 @@ func createPassiveConn(s *Session, _ string) {
 	go func(s *Session) {
 		//todo what is the port?
 		log.Println("start passive connection...")
-		listener, err := net.Listen("tcp", "")
+		//todo use not only default ip (0,0,0,0)
+		listener, err := net.Listen("tcp4", "")
 		if err != nil {
 			log.Println("cannot listen port:", err.Error())
 			return
 		}
 		//todo when to close the listener???
 		//todo format address
-		s.response(227, "Entering Passive Mode ("+listener.Addr().String()+")", false)
+		ftpAddr, err := toFtpAddr(listener.Addr().String())
+		if err != nil {
+			log.Println("ERROR:", err.Error())
+			return
+		}
+		s.response(227, "Entering Passive Mode ("+ftpAddr+")", false)
 		log.Println("create passive connection to port", listener.Addr())
 		conn, err := listener.Accept()
 		if err != nil {

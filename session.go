@@ -2,6 +2,7 @@ package ftp
 
 import (
 	"bytes"
+	"fmt"
 	"log"
 	"net"
 	"os"
@@ -105,12 +106,37 @@ func (s *Session) clippedDir() string {
 	}
 }
 
-func parsePort(port uint) (uint, uint) {
+func toFtpAddr(addr string) (string, error) {
+	rawAddr := strings.Split(addr, ":")
+
+	ip := strings.Split(rawAddr[0], ".")
+
+	port, err := strconv.Atoi(rawAddr[1])
+	if err != nil {
+		return "", fmt.Errorf("not supported address format: %s", addr)
+	}
 	first := port / 256
 	second := port - (first * 256)
-	return first, second
+
+	ip = append(ip, strconv.Itoa(first))
+	ip = append(ip, strconv.Itoa(second))
+
+	return strings.Join(ip, ","), nil
 }
 
-func formatPort(first, second uint) uint {
-	return (first * 256) + second
+//todo validate addr
+func toTcpIpAddr(ftpAddr string) (string, error) {
+	rawAddr := strings.Split(ftpAddr, ",")
+	ip := strings.Join(rawAddr[:4], ".")
+
+	first, err := strconv.Atoi(rawAddr[4])
+	if err != nil {
+		return "", fmt.Errorf("not supported address format: %s", ftpAddr)
+	}
+	second, err := strconv.Atoi(rawAddr[5])
+	if err != nil {
+		return "", fmt.Errorf("not supported address format: %s", ftpAddr)
+	}
+
+	return ip + strconv.Itoa(first*256+second), nil
 }
