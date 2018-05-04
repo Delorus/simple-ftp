@@ -38,13 +38,13 @@ func handle(conn net.Conn) {
 	for {
 		rawRequest, err := reader.ReadString('\n') //todo bug: not read message: "port XYZ"
 		if err != nil {
-			printfWarn("cannot read request", conn, err)
+			logErr(session, "cannot read request from addr:", conn.RemoteAddr().String(), err.Error())
 			return
 		}
 
 		req, err := parse(rawRequest)
 		if err != nil {
-			printfWarn("cannot parse request", conn, err)
+			logErr(session, "cannot parse request from addr:", conn.RemoteAddr().String(), err.Error())
 			return
 		}
 
@@ -80,14 +80,36 @@ func parse(raw string) (request, error) {
 }
 
 func processRequest(s *Session, req request) {
+	logReq(s, req)
 	if command, ok := Commands[req.cmdName]; ok {
 		command(s, req.args)
 	} else {
 		s.response(500, req.cmdName+" not understood.", false)
-		log.Println("WARN: unknown command:", req.cmdName)
 	}
 }
 
-func printfWarn(message string, conn net.Conn, err error) {
-	log.Printf("[%15s] WARN: %s: %s", conn.RemoteAddr(), message, err)
+//todo move to another file
+func logErr(s *Session, errs ...string) {
+	logFormat(s, "ERROR", errs...)
+}
+
+func logInfo(s *Session, messages ...string) {
+	logFormat(s, "INFO", messages...)
+}
+
+func logResp(s *Session, response string) {
+	logFormat(s, "RESP", strings.TrimSpace(response))
+}
+
+func logReq(s *Session, req request) {
+	if req.cmdName == "PASS" {
+		logFormat(s, "REQV", req.cmdName, "****")
+	} else {
+		logFormat(s, "REQV", req.cmdName, req.args)
+	}
+}
+
+func logFormat(s *Session, prefix string, messages ...string) {
+	msg := strings.Join(messages, " ")
+	log.Printf("[%s] %s: %s\n", s.sessionId, prefix, msg)
 }

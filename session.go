@@ -2,6 +2,8 @@ package ftp
 
 import (
 	"bytes"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"log"
 	"net"
@@ -10,11 +12,13 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 //todo change export/not export field
 type Session struct {
-	conn net.Conn
+	conn      net.Conn
+	sessionId string
 
 	//todo do not save in mem
 	login    string
@@ -61,9 +65,12 @@ func NewSession(conn net.Conn) *Session {
 		log.Fatal(err.Error())
 	}
 	cwd = filepath.ToSlash(cwd)
+
+	hashSum := md5.Sum([]byte(conn.RemoteAddr().String() + time.Now().String()))
 	result := &Session{
-		conn: conn,
-		data: make(chan data, 5), //todo send message if queue is full
+		conn:      conn,
+		sessionId: hex.EncodeToString(hashSum[:]),
+		data:      make(chan data, 5), //todo send message if queue is full
 		//todo other default value
 
 		rootDir:    cwd,
@@ -82,6 +89,7 @@ func (s *Session) response(code int, msg string, isPrefix bool) {
 		resp.WriteString(" ")
 	}
 	resp.WriteString(msg + "\n")
+	logResp(s, resp.String())
 	resp.WriteTo(s.conn)
 }
 

@@ -3,7 +3,6 @@ package ftp
 import (
 	"bytes"
 	"io/ioutil"
-	"log"
 	"net"
 	"os"
 	"path"
@@ -16,6 +15,7 @@ var Commands map[string]command
 
 // https://stackoverflow.com/questions/31726254/how-to-avoid-initialization-loop-in-go
 func init() {
+	//todo to switch-case?
 	Commands = map[string]command{
 		//todo sort
 		"USER": setLogin,
@@ -45,7 +45,6 @@ func init() {
 func setLogin(s *Session, login string) {
 	//todo login is not empty
 	//todo anonymous login
-	log.Println("set login " + login)
 	s.login = login
 	s.response(331, "Password required for "+login, false)
 }
@@ -60,7 +59,6 @@ func setPassword(s *Session, password string) {
 	}
 	s.passHash = password //todo hash
 	s.response(230, "User "+s.login+" logged in.", false)
-	log.Println("set password " + password)
 }
 
 func quit(s *Session, _ string) {
@@ -70,53 +68,51 @@ func quit(s *Session, _ string) {
 		s.dataConn.Close() //todo close to transfer func
 	}
 	s.response(221, "Goodbye.", false)
-	log.Println("quit")
 }
 
-//todo parse addr
 func createActiveConn(s *Session, addr string) {
 	s.stopTransfer = false
 	go func(s *Session, addr string) {
+		logInfo(s, "start active connection to addr:", addr)
 		tcpAddr, err := toTcpIpAddr(addr)
 		if err != nil {
-			log.Println("ERROR:", err.Error())
+			logErr(s, err.Error())
 			return
 		}
 		conn, err := net.Dial("tcp", tcpAddr)
 		if err != nil {
-			log.Println("cannot connected to remote client")
+			logErr(s, "cannot connected to remote client", err.Error())
 			//todo client response
 			return
 		}
 		s.dataConn = conn
 		s.response(200, "PORT command successful.", false)
-		log.Println("create active connection to " + addr)
 	}(s, addr)
 }
 
 func createPassiveConn(s *Session, _ string) {
 	s.stopTransfer = false
 	go func(s *Session) {
+		logInfo(s, "start passive connection")
 		//todo what is the port?
-		log.Println("start passive connection...")
 		//todo use not only default ip (0,0,0,0)
 		listener, err := net.Listen("tcp4", "")
 		if err != nil {
-			log.Println("cannot listen port:", err.Error())
+			logErr(s, "cannot listen port:", err.Error())
 			return
 		}
 		//todo when to close the listener???
 		//todo format address
 		ftpAddr, err := toFtpAddr(listener.Addr().String())
 		if err != nil {
-			log.Println("ERROR:", err.Error())
+			logErr(s, err.Error())
 			return
 		}
 		s.response(227, "Entering Passive Mode ("+ftpAddr+")", false)
-		log.Println("create passive connection to port", listener.Addr())
+
 		conn, err := listener.Accept()
 		if err != nil {
-			log.Println("cannot connected to remote client", err.Error())
+			logErr(s, "cannot connected to remote client", err.Error())
 			return
 		}
 		s.dataConn = conn
@@ -127,48 +123,46 @@ func createPassiveConn(s *Session, _ string) {
 func setType(s *Session, transferType string) {
 	s.transferType = transferType
 	s.response(200, "Type set to "+transferType, false)
-	log.Println("set type " + transferType)
 }
 
 func setMode(s *Session, mode string) {
 	s.mode = mode
 	//todo change response message
 	s.response(200, "i'm teapot", false)
-	log.Println("set mode " + mode)
 }
 
 func setStructure(s *Session, structure string) {
 	s.structure = structure
 	s.response(200, "i'm teapot", false)
-	log.Println("set structure " + structure)
 }
 
 func sendFile(s *Session, pathname string) {
+	logInfo(s, "start send file", s.currentDir+"/"+pathname)
 	s.stopTransfer = false
 	s.data <- data{
 		process: func(s *Session, file string) {
+			logInfo(s, "send file", file)
 			//todo don't read all file to mem
 			//todo get file size
-			readFile, err := ioutil.ReadFile(s.currentDir + "/" + pathname)
+			readFile, err := ioutil.ReadFile(s.currentDir + "/" + file)
 			if err != nil {
 				//todo improve err handle
 				s.response(552, "Requested file action aborted.", false)
-				log.Println("cannot read file:", err.Error())
+				logErr(s, err.Error())
 				return
 			}
 			//todo dataConn != nil ?
 			s.dataConn.Write(readFile)
 			s.response(226, "Transfer complete.", false)
-			log.Println("send file " + file)
 		},
 		value: pathname,
 	}
 	//todo wrong message
 	s.response(150, "Opening data connection", false)
-	log.Println("start send file " + pathname)
 }
 
 func storeFile(s *Session, pathname string) {
+	logInfo(s, "store file", s.currentDir+"/"+pathname)
 	s.stopTransfer = false
 	s.data <- data{
 		process: func(s *Session, file string) {
@@ -176,6 +170,7 @@ func storeFile(s *Session, pathname string) {
 			if err != nil {
 				//todo improve err handle
 				s.response(552, "Requested file action aborted.", false)
+				logErr(s, err.Error())
 				return
 			}
 			ioutil.WriteFile(s.currentDir+"/"+file, readFile, 0)
@@ -185,41 +180,41 @@ func storeFile(s *Session, pathname string) {
 	}
 	//todo wrong message
 	s.response(150, "Opening data connection", false)
-	log.Println("store file " + pathname)
 }
 
 func noop(s *Session, _ string) {
 	s.response(200, "NOOP command successful.", false)
-	log.Println("no-op")
 }
 
 func deleteFile(s *Session, pathname string) {
+	logInfo(s, "delete file", s.currentDir+"/"+pathname)
 	//todo os.PathSeparator
 	err := os.Remove(s.currentDir + "/" + pathname)
 	if err != nil {
 		//todo improve message (for any cases)
 		s.response(521, "Removing file was failed.", false)
-		log.Println("ERROR: cannot removed file", pathname, err.Error())
+		logErr(s, err.Error())
 		return
 	}
 	s.response(250, "DELE command successful.", false)
-	log.Println("delete file " + pathname)
 }
 
 func removeDir(s *Session, pathname string) {
+	logInfo(s, "delete directory", s.currentDir+"/"+pathname)
 	//todo check auth
 	//todo correct perform current dir
 	err := os.RemoveAll(s.currentDir + "/" + pathname)
 	if err != nil {
 		//todo improve message (for any cases)
 		s.response(521, "Removing file was failed.", false)
+		logErr(s, err.Error())
 		return
 	}
 	s.response(250, "RMD command successful.", false)
-	log.Println("remove directory " + pathname)
 }
 
 func changeDir(s *Session, pathname string) {
+	logInfo(s, "change dir to", pathname)
 	if pathname == "" {
 		s.response(501, "Invalid number of parameters.", false)
 		return
@@ -227,11 +222,12 @@ func changeDir(s *Session, pathname string) {
 	s.currentDir = s.resolveDir(pathname)
 	//todo improve message
 	s.response(250, "CWD command successful", false)
-	log.Println("change dir to " + pathname)
+	logInfo(s, "current dir:", s.currentDir)
 }
 
 //todo check not empty param if needed
 func makeDir(s *Session, pathname string) {
+	logInfo(s, "create directory:", pathname)
 	if pathname == "" {
 		s.response(501, "Invalid number of parameters.", false)
 		return
@@ -239,16 +235,14 @@ func makeDir(s *Session, pathname string) {
 	if err := os.Mkdir(s.resolveDir(pathname), 0); err == nil {
 		//todo resolve pathname
 		s.response(257, `"`+pathname+`" - Directory successfully created.`, false)
-		log.Println("make dir " + pathname)
 	} else {
 		s.response(521, "Making directory was failed.", false)
-		log.Println("ERROR: cannot make directory", err.Error())
+		logErr(s, err.Error())
 	}
 }
 
 func printCurrentDir(s *Session, _ string) {
 	s.response(257, `"`+s.clippedDir()+`" is current directory.`, false)
-	log.Println("print current directory")
 }
 
 func getFiles(s *Session, pathname string) {
@@ -258,21 +252,19 @@ func getFiles(s *Session, pathname string) {
 	} else {
 		dir = s.resolveDir(pathname)
 	}
+	logInfo(s, "send list of files in dir:", dir)
 
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
-		log.Println(err.Error())
 		s.response(550, dir+": No such directory", false)
+		logErr(s, err.Error())
 		return
 	}
 
-	log.Println("get all files in " + dir)
 	//todo create data ASCII connection
 	s.response(150, "Accepted data connection", false)
 	if s.dataConn == nil {
 		s.response(425, "Cannot open data connection.", false)
-		//todo print connection infos (e.g. [ip:port])
-		log.Println("WARN: data connection is empty")
 		return
 	}
 
@@ -299,13 +291,12 @@ func abortTransfer(s *Session, _ string) {
 		s.dataConn.Close()
 	}
 	s.response(226, "ABOR command successful", false)
-	log.Println("cancel transfer")
 }
 
 func setFileForRename(s *Session, pathname string) {
 	s.fileToRename = s.resolveDir(pathname)
+	logInfo(s, "rename file:", s.fileToRename)
 	s.response(350, "Waiting for file name input.", false)
-	log.Println("set file for rename " + pathname)
 }
 
 func renameFile(s *Session, newName string) {
@@ -313,7 +304,6 @@ func renameFile(s *Session, newName string) {
 	fileDir, oldFileName := path.Split(s.fileToRename)
 	os.Rename(s.fileToRename, fileDir+fileName)
 	s.response(250, `File "`+oldFileName+`" renamed to "`+fileName+`"`, false)
-	log.Println("rename file to " + newName)
 }
 
 func help(s *Session, _ string) {
