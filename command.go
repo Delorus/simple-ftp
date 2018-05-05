@@ -2,6 +2,7 @@ package ftp
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"net"
 	"os"
@@ -136,23 +137,30 @@ func setStructure(s *Session, structure string) {
 	s.response(200, "i'm teapot", false)
 }
 
-func sendFile(s *Session, pathname string) {
+func sendFile(s *Session, pathname string) { //todo measure the transfer speed
 	logInfo(s, "start send file", s.currentDir+"/"+pathname)
 	s.stopTransfer = false
 	s.data <- data{
 		process: func(s *Session, file string) {
 			logInfo(s, "send file", file)
-			//todo don't read all file to mem
 			//todo get file size
-			readFile, err := ioutil.ReadFile(s.currentDir + "/" + file)
+			openedFile, err := os.Open(s.currentDir + "/" + file)
 			if err != nil {
 				//todo improve err handle
 				s.response(552, "Requested file action aborted.", false)
 				logErr(s, err.Error())
 				return
 			}
+			defer openedFile.Close()
+
+			pipe := io.TeeReader(openedFile, s.dataConn)
+			if _, err = ioutil.ReadAll(pipe); err != nil {
+				//todo improve err handle
+				s.response(552, "Requested file action aborted.", false)
+				logErr(s, err.Error())
+				return
+			}
 			//todo dataConn != nil ?
-			s.dataConn.Write(readFile)
 			s.response(226, "Transfer complete.", false)
 		},
 		value: pathname,
@@ -166,6 +174,7 @@ func storeFile(s *Session, pathname string) {
 	s.stopTransfer = false
 	s.data <- data{
 		process: func(s *Session, file string) {
+			//todo don't read all file to mem
 			readFile, err := ioutil.ReadAll(s.dataConn)
 			if err != nil {
 				//todo improve err handle
@@ -173,7 +182,7 @@ func storeFile(s *Session, pathname string) {
 				logErr(s, err.Error())
 				return
 			}
-			ioutil.WriteFile(s.currentDir+"/"+file, readFile, 0)
+			ioutil.WriteFile(s.currentDir+"/"+file, readFile, 0) //todo perm?
 			s.response(226, "Transfer complete.", false)
 		},
 		value: pathname,
