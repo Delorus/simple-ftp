@@ -153,6 +153,7 @@ func sendFile(s *Session, pathname string) { //todo measure the transfer speed
 			}
 			defer openedFile.Close()
 
+			//todo dataConn != nil ?
 			pipe := io.TeeReader(openedFile, s.dataConn)
 			if _, err = ioutil.ReadAll(pipe); err != nil {
 				//todo improve err handle
@@ -160,7 +161,7 @@ func sendFile(s *Session, pathname string) { //todo measure the transfer speed
 				logErr(s, err.Error())
 				return
 			}
-			//todo dataConn != nil ?
+
 			s.response(226, "Transfer complete.", false)
 		},
 		value: pathname,
@@ -297,7 +298,8 @@ func getFiles(s *Session, pathname string) {
 func abortTransfer(s *Session, _ string) {
 	s.stopTransfer = true
 	if s.dataConn != nil {
-		s.dataConn.Close()
+		s.dataConn.Close() //todo bug: write error in log
+		logInfo(s, "data connection closed")
 	}
 	s.response(226, "ABOR command successful", false)
 }
