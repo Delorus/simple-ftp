@@ -49,10 +49,14 @@ type data struct {
 }
 
 func transfer(s *Session, data <-chan data) {
-	v := <-data
-	logInfo(s, "start transfer data")
-	v.process(s, v.value)
-	s.dataConn.Close()
+	for v := range data {
+		if s.dataConn == nil {
+			continue
+		}
+		logInfo(s, "start transfer data")
+		v.process(s, v.value)
+		s.dataConn.Close()
+	}
 }
 
 func NewSession(conn net.Conn) *Session {
