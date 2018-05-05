@@ -11,6 +11,7 @@ import (
 	"strings"
 )
 
+//todo Serve? ListenAndServe?
 func Run() {
 	log.Println("start ftp server...")
 	server, err := net.Listen("tcp", ":2121")

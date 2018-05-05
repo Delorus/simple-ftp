@@ -99,7 +99,7 @@ func (s *Session) resolveDir(rawDir string) string {
 	}
 	dir := path.Join(s.currentDir, rawDir)
 	if dir[0] == '/' {
-		return s.rootDir + dir
+		return s.rootDir + dir //todo attempt broken root path
 	} else {
 		return dir
 	}
