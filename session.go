@@ -49,13 +49,10 @@ type data struct {
 }
 
 func transfer(s *Session, data <-chan data) {
-	for v := range data {
-		log.Println("start transfer data")
-		v.process(s, v.value)
-		//todo ABOR 226 the operation was canceled successfully
-		//todo close connection after transfer finish
-	}
-	log.Println("start file transfer")
+	v := <-data
+	logInfo(s, "start transfer data")
+	v.process(s, v.value)
+	s.dataConn.Close()
 }
 
 func NewSession(conn net.Conn) *Session {

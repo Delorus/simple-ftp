@@ -73,6 +73,9 @@ func quit(s *Session, _ string) {
 
 func createActiveConn(s *Session, addr string) {
 	s.stopTransfer = false
+	if s.dataConn != nil {
+		s.dataConn.Close()
+	}
 	go func(s *Session, addr string) {
 		logInfo(s, "start active connection to addr:", addr)
 		tcpAddr, err := toTcpIpAddr(addr)
@@ -93,6 +96,9 @@ func createActiveConn(s *Session, addr string) {
 
 func createPassiveConn(s *Session, _ string) {
 	s.stopTransfer = false
+	if s.dataConn != nil {
+		s.dataConn.Close()
+	}
 	go func(s *Session) {
 		logInfo(s, "start passive connection")
 		//todo what is the port?
@@ -117,6 +123,7 @@ func createPassiveConn(s *Session, _ string) {
 			return
 		}
 		s.dataConn = conn
+		listener.Close()
 	}(s)
 }
 
