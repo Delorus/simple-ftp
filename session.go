@@ -17,8 +17,8 @@ import (
 
 //todo change export/not export field
 type Session struct {
-	conn      net.Conn
-	sessionId string
+	conn net.Conn
+	id   string
 
 	//todo do not save in mem
 	login    string
@@ -68,9 +68,9 @@ func NewSession(conn net.Conn) *Session {
 
 	hashSum := md5.Sum([]byte(conn.RemoteAddr().String() + time.Now().String()))
 	result := &Session{
-		conn:      conn,
-		sessionId: hex.EncodeToString(hashSum[:]),
-		data:      make(chan data, 5), //todo send message if queue is full
+		conn: conn,
+		id:   hex.EncodeToString(hashSum[:]),
+		data: make(chan data, 5), //todo send message if queue is full
 		//todo other default value
 
 		rootDir:    cwd,

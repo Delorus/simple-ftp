@@ -111,5 +111,5 @@ func logReq(s *Session, req request) {
 
 func logFormat(s *Session, prefix string, messages ...string) {
 	msg := strings.Join(messages, " ")
-	log.Printf("[%s] %s: %s\n", s.sessionId, prefix, msg)
+	log.Printf("[%s] %s: %s\n", s.id, prefix, msg)
 }
