@@ -6,6 +6,7 @@ package ftp
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"log" //todo change logging
 	"net"
 	"strings"
@@ -39,8 +40,12 @@ func handle(conn net.Conn) {
 	for {
 		rawRequest, err := reader.ReadString('\n') //todo bug: not read message: "port XYZ"
 		if err != nil {
-			logErr(session, "cannot read request from addr:", conn.RemoteAddr().String(), err.Error())
-			return
+			if err == io.EOF {
+				rawRequest = "QUIT"
+			} else {
+				logErr(session, "cannot read request from addr:", conn.RemoteAddr().String(), err.Error())
+				return
+			}
 		}
 
 		req, err := parse(rawRequest)
