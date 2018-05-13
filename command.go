@@ -158,13 +158,14 @@ func setType(s *Session, transferType string) {
 }
 
 func setMode(s *Session, mode string) {
-	s.mode = mode
-	//todo change response message
-	s.response(200, "i'm teapot", false)
+	if mode[0] != 'S' {
+		s.response(504, "MODE not implemented for that parameter.", false)
+	}
+	s.response(200, "Mode S ok.", false)
 }
 
 func setStructure(s *Session, structure string) {
-	s.structure = structure
+	s.structure = structure[0]
 	s.response(200, "i'm teapot", false)
 }
 
