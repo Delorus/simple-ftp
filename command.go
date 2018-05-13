@@ -8,6 +8,7 @@ import (
 	"os"
 	"path"
 	"strconv"
+	"strings"
 )
 
 type command func(*Session, string)
@@ -71,7 +72,7 @@ func quit(s *Session, _ string) {
 	s.response(221, "Goodbye.", false)
 }
 
-func createActiveConn(s *Session, addr string) {
+func createActiveConn(s *Session, addr string) { //todo test active connections
 	s.stopTransfer = false
 	if s.dataConn != nil {
 		s.dataConn.Close()
@@ -127,10 +128,32 @@ func createPassiveConn(s *Session, _ string) {
 	}(s)
 }
 
+type reprType struct {
+	// ASCII character
+	first byte
+	// ASCII character
+	second byte
+}
+
 //todo enum type
 func setType(s *Session, transferType string) {
-	s.transferType = transferType
-	s.response(200, "Type set to "+transferType, false)
+	args := strings.Split(transferType, " ")
+	switch args[0] {
+	case "A":
+		s.transferType.first = 'A'
+		//todo don't ignore ↓
+		s.transferType.second = args[1][0] //todo validate
+	case "I":
+		s.transferType.first = 'I'
+	case "E":
+		fallthrough
+	case "L":
+		fallthrough
+	default:
+		s.response(504, "TYPE not implemented for that parameter.", false)
+		return
+	}
+	s.response(200, "Type set to "+string(s.transferType.first), false)
 }
 
 func setMode(s *Session, mode string) {
@@ -169,7 +192,7 @@ func sendFile(s *Session, pathname string) { //todo measure the transfer speed
 				return
 			}
 
-			s.response(226, "Transfer complete.", false)
+			s.response(226, "Transfer complete.", false) //todo response MUST BE send AFTER close the data connection
 		},
 		value: pathname,
 	}

@@ -30,7 +30,7 @@ type Session struct {
 	dataConn     net.Conn
 	data         chan data //todo type
 	stopTransfer bool
-	transferType string //todo type
+	transferType reprType
 	mode         string //todo type
 	structure    string //todo type
 
