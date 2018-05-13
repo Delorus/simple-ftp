@@ -160,13 +160,24 @@ func setType(s *Session, transferType string) {
 func setMode(s *Session, mode string) {
 	if mode[0] != 'S' {
 		s.response(504, "MODE not implemented for that parameter.", false)
+		return
 	}
 	s.response(200, "Mode S ok.", false)
 }
 
 func setStructure(s *Session, structure string) {
-	s.structure = structure[0]
-	s.response(200, "i'm teapot", false)
+	switch structure[0] {
+	case 'F':
+		s.structure = 'F'
+	case 'R':
+		s.structure = 'R'
+	case 'P':
+		fallthrough
+	default:
+		s.response(504, "MODE not implemented for that parameter.", false)
+		return
+	}
+	s.response(200, "Structure "+string(s.structure)+" ok.", false)
 }
 
 func sendFile(s *Session, pathname string) { //todo measure the transfer speed
