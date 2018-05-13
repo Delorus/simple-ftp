@@ -145,6 +145,7 @@ func setType(s *Session, transferType string) {
 		s.transferType.second = args[1][0] //todo validate
 	case "I":
 		s.transferType.first = 'I'
+		//todo ignore second params?
 	case "E":
 		fallthrough
 	case "L":

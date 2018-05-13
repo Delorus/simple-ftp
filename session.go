@@ -31,8 +31,8 @@ type Session struct {
 	data         chan data //todo type
 	stopTransfer bool
 	transferType reprType
-	mode         string //todo type
-	structure    string //todo type
+	mode         byte //todo type
+	structure    byte //todo type
 
 	//todo default value
 	rootDir    string //todo type
@@ -76,6 +76,10 @@ func NewSession(conn net.Conn) *Session {
 
 		rootDir:    cwd,
 		currentDir: cwd,
+
+		transferType: reprType{first: 'A', second: 'N'},
+		mode:         'S',
+		structure:    'F',
 	}
 	go transfer(result, result.data)
 	return result
